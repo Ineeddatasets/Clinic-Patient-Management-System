@@ -4,12 +4,13 @@
 <section class="panel">
     <div class="panel-header"><h2>Add Doctor</h2><p>Manage doctors assigned in the clinic.</p></div>
     <form method="POST" action="{{ url_for('add_doctor') }}" class="form-grid four">
-        <input name="full_name" placeholder="Doctor Name" required>
-        <input name="specialization" placeholder="Specialization">
-        <input name="contact_number" placeholder="Contact Number">
-        <input type="email" name="email" placeholder="Email">
-        <button class="btn primary">Add Doctor</button>
-    </form>
+    <input name="full_name" placeholder="Doctor Name" required>
+    <input name="specialization" placeholder="Specialization">
+    <input name="contact_number" placeholder="Contact Number">
+    <input type="email" name="email" placeholder="Email" required>
+    <input type="password" name="password" placeholder="Password" required>
+    <button class="btn primary">Add Doctor</button>
+</form>
 </section>
 <section class="panel">
     <div class="panel-header"><h2>Doctor Records</h2></div>
