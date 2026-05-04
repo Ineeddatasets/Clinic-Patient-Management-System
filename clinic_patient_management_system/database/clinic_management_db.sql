@@ -13,6 +13,7 @@ CREATE TABLE users (
     email VARCHAR(100) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL,
     role ENUM('Admin', 'Staff', 'Doctor') NOT NULL,
+    doctor_id INT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -62,14 +63,15 @@ CREATE TABLE diagnoses (
     FOREIGN KEY (appointment_id) REFERENCES appointments(appointment_id) ON DELETE SET NULL
 );
 
-INSERT INTO users (full_name, email, password, role) VALUES
-('System Administrator', 'admin@clinic.com', 'pbkdf2:sha256:1000000$c2ded0c5e8c8531d$fdb43bd5f8b510fee77b1f76a8e9daf0a29ce0570a83fce08dce4f92b48fa2fe', 'Admin'),
-('Clinic Staff', 'staff@clinic.com', 'pbkdf2:sha256:1000000$ee449504a8335d78$51418d9227de429d32ee637791a65a82a5ef147582a9ee4293ecf596b9f261d0', 'Staff'),
-('Clinic Doctor', 'doctor@clinic.com', 'pbkdf2:sha256:1000000$b3619efa2fa72f46$108b306e3e0ef0714a95c2587aceef5818d84c72839e69d82edcd3174da9a635', 'Doctor');
-
 INSERT INTO doctors (full_name, specialization, contact_number, email) VALUES
 ('Dr. Maria Santos', 'General Medicine', '09123456789', 'maria.santos@clinic.com'),
 ('Dr. Juan Dela Cruz', 'Family Medicine', '09987654321', 'juan.delacruz@clinic.com');
+
+INSERT INTO users (full_name, email, password, role, doctor_id) VALUES
+('System Administrator', 'admin@clinic.com', 'pbkdf2:sha256:1000000$c2ded0c5e8c8531d$fdb43bd5f8b510fee77b1f76a8e9daf0a29ce0570a83fce08dce4f92b48fa2fe', 'Admin', NULL),
+('Clinic Staff', 'staff@clinic.com', 'pbkdf2:sha256:1000000$ee449504a8335d78$51418d9227de429d32ee637791a65a82a5ef147582a9ee4293ecf596b9f261d0', 'Staff', NULL),
+('Dr. Maria Santos', 'maria.santos@clinic.com', 'pbkdf2:sha256:1000000$b3619efa2fa72f46$108b306e3e0ef0714a95c2587aceef5818d84c72839e69d82edcd3174da9a635', 'Doctor', 1),
+('Dr. Juan Dela Cruz', 'juan.delacruz@clinic.com', 'pbkdf2:sha256:1000000$b3619efa2fa72f46$108b306e3e0ef0714a95c2587aceef5818d84c72839e69d82edcd3174da9a635', 'Doctor', 2);
 
 INSERT INTO patients (full_name, age, gender, address, contact_number, medical_history) VALUES
 ('John Doe', 25, 'Male', 'Cebu City', '09111111111', 'No major medical history'),

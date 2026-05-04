@@ -2,17 +2,67 @@
 {% set page_title = 'User Account Management' %}
 {% block content %}
 <section class="panel">
-    <div class="panel-header"><h2>Create User</h2><p>Add Admin, Staff, or Doctor login account.</p></div>
+    <div class="panel-header">
+        <h2>Create User</h2>
+        <p>Add Admin, Staff, or Doctor login accounts. When the role is Doctor, the system automatically creates and connects a new doctor profile for that account.</p>
+    </div>
     <form method="POST" action="{{ url_for('add_user') }}" class="form-grid four">
         <input name="full_name" placeholder="Full Name" required>
         <input type="email" name="email" placeholder="Email" required>
         <input type="password" name="password" placeholder="Password" required>
-        <select name="role"><option>Admin</option><option>Staff</option><option>Doctor</option></select>
+        <select name="role" id="roleSelect" required>
+            <option>Admin</option>
+            <option>Staff</option>
+            <option>Doctor</option>
+        </select>
+        <input name="specialization" class="doctor-field" placeholder="Specialization for Doctor">
+        <input name="contact_number" class="doctor-field" placeholder="Contact Number for Doctor">
         <button class="btn primary">Create Account</button>
     </form>
+    <p class="muted small-note">For a new doctor, choose <strong>Doctor</strong> as the role. The system will automatically create that doctor’s own profile and connect it to the login account.</p>
 </section>
 <section class="panel">
-    <div class="panel-header"><h2>System Users</h2></div>
-    <table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Date Created</th></tr></thead><tbody>{% for u in users %}<tr><td>{{ u.full_name }}</td><td>{{ u.email }}</td><td>{{ u.role }}</td><td>{{ u.created_at }}</td></tr>{% else %}<tr><td colspan="4">No users found.</td></tr>{% endfor %}</tbody></table>
+    <div class="panel-header">
+        <h2>System Users</h2>
+        <p>Doctor accounts are connected automatically to their own doctor profile. No manual linking is needed.</p>
+    </div>
+    <table>
+        <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Doctor Profile</th><th>Date Created</th><th>Status</th></tr></thead>
+        <tbody>
+            {% for u in users %}
+            <tr>
+                <td>{{ u.full_name }}</td>
+                <td>{{ u.email }}</td>
+                <td>{{ u.role }}</td>
+                <td>
+                    {% if u.role == 'Doctor' %}
+                        {% if u.doctor_name %}
+                            <span class="badge approved">{{ u.doctor_name }}</span>
+                        {% else %}
+                            <span class="badge pending">Auto-created on next refresh</span>
+                        {% endif %}
+                    {% else %}
+                        Not needed
+                    {% endif %}
+                </td>
+                <td>{{ u.created_at }}</td>
+                <td><span class="badge approved">OK</span></td>
+            </tr>
+            {% else %}<tr><td colspan="6">No users found.</td></tr>{% endfor %}
+        </tbody>
+    </table>
 </section>
+<script>
+const roleSelect = document.getElementById('roleSelect');
+const doctorFields = document.querySelectorAll('.doctor-field');
+function toggleDoctorFields() {
+    const isDoctor = roleSelect.value === 'Doctor';
+    doctorFields.forEach(field => {
+        field.style.display = isDoctor ? '' : 'none';
+        field.disabled = !isDoctor;
+    });
+}
+roleSelect.addEventListener('change', toggleDoctorFields);
+toggleDoctorFields();
+</script>
 {% endblock %}

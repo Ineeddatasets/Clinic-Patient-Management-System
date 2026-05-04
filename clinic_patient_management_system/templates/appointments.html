@@ -31,10 +31,14 @@
                 <td>{{ a.patient_name }}</td><td>{{ a.doctor_name }}</td><td>{{ a.appointment_date }}</td><td>{{ a.appointment_time }}</td><td>{{ a.reason }}</td>
                 <td><span class="badge {{ a.status|lower }}">{{ a.status }}</span></td>
                 <td>
+                    {% if session.role in ['Admin', 'Doctor'] %}
                     <form method="POST" action="{{ url_for('update_appointment_status', appointment_id=a.appointment_id) }}" class="inline-form">
                         <select name="status"><option {% if a.status=='Pending' %}selected{% endif %}>Pending</option><option {% if a.status=='Approved' %}selected{% endif %}>Approved</option><option {% if a.status=='Completed' %}selected{% endif %}>Completed</option><option {% if a.status=='Cancelled' %}selected{% endif %}>Cancelled</option></select>
                         <button class="btn mini">Save</button>
                     </form>
+                    {% else %}
+                    View only
+                    {% endif %}
                 </td>
             </tr>
             {% else %}<tr><td colspan="7">No appointments found.</td></tr>{% endfor %}

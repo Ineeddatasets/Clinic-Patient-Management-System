@@ -51,6 +51,50 @@ def execute_query(query, params=None):
     conn.close()
 
 
+def execute_insert(query, params=None):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(query, params or ())
+    conn.commit()
+    last_id = cursor.lastrowid
+    cursor.close()
+    conn.close()
+    return last_id
+
+
+def ensure_doctor_profile_for_user(user):
+    """Automatically creates/connects a doctor profile for a Doctor user account."""
+    if not user or user.get('role') != 'Doctor' or user.get('doctor_id'):
+        return user
+
+    existing_doctor = fetch_one('SELECT doctor_id FROM doctors WHERE email=%s', (user['email'],))
+    if existing_doctor:
+        doctor_id = existing_doctor['doctor_id']
+    else:
+        doctor_id = execute_insert("""
+            INSERT INTO doctors (full_name, specialization, contact_number, email)
+            VALUES (%s, %s, %s, %s)
+        """, (user['full_name'], '', '', user['email']))
+
+    execute_query('UPDATE users SET doctor_id=%s WHERE user_id=%s', (doctor_id, user['user_id']))
+    user['doctor_id'] = doctor_id
+    return user
+
+
+def repair_unlinked_doctor_accounts():
+    """Auto-fixes old Doctor accounts created before doctor-profile linking existed."""
+    unlinked_doctors = fetch_all("""
+        SELECT user_id, full_name, email, role, doctor_id
+        FROM users
+        WHERE role='Doctor' AND doctor_id IS NULL
+    """)
+    repaired = 0
+    for user in unlinked_doctors:
+        ensure_doctor_profile_for_user(user)
+        repaired += 1
+    return repaired
+
+
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -88,9 +132,11 @@ def login():
         user = fetch_one('SELECT * FROM users WHERE email=%s', (email,))
 
         if user and check_password_hash(user['password'], password):
+            user = ensure_doctor_profile_for_user(user)
             session['user_id'] = user['user_id']
             session['full_name'] = user['full_name']
             session['role'] = user['role']
+            session['doctor_id'] = user.get('doctor_id')
             flash('Login successful.', 'success')
             return redirect(url_for('dashboard'))
 
@@ -108,20 +154,45 @@ def logout():
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    stats = {
-        'patients': fetch_one('SELECT COUNT(*) AS total FROM patients')['total'],
-        'doctors': fetch_one('SELECT COUNT(*) AS total FROM doctors')['total'],
-        'appointments': fetch_one('SELECT COUNT(*) AS total FROM appointments')['total'],
-        'pending': fetch_one("SELECT COUNT(*) AS total FROM appointments WHERE status='Pending'")['total'],
-        'diagnoses': fetch_one('SELECT COUNT(*) AS total FROM diagnoses')['total']
-    }
-    recent_appointments = fetch_all('''
-        SELECT a.*, p.full_name AS patient_name, d.full_name AS doctor_name
-        FROM appointments a
-        JOIN patients p ON a.patient_id = p.patient_id
-        JOIN doctors d ON a.doctor_id = d.doctor_id
-        ORDER BY a.created_at DESC LIMIT 5
-    ''')
+    if session.get('role') == 'Doctor':
+        doctor_id = session.get('doctor_id')
+        if not doctor_id:
+            stats = {'patients': 0, 'doctors': 1, 'appointments': 0, 'pending': 0, 'diagnoses': 0}
+            recent_appointments = []
+            flash('Your doctor account is not linked to a doctor profile yet. Please contact the admin.', 'warning')
+        else:
+            stats = {
+                'patients': fetch_one('''
+                    SELECT COUNT(DISTINCT patient_id) AS total FROM appointments WHERE doctor_id=%s
+                ''', (doctor_id,))['total'],
+                'doctors': 1,
+                'appointments': fetch_one('SELECT COUNT(*) AS total FROM appointments WHERE doctor_id=%s', (doctor_id,))['total'],
+                'pending': fetch_one("SELECT COUNT(*) AS total FROM appointments WHERE status='Pending' AND doctor_id=%s", (doctor_id,))['total'],
+                'diagnoses': fetch_one('SELECT COUNT(*) AS total FROM diagnoses WHERE doctor_id=%s', (doctor_id,))['total']
+            }
+            recent_appointments = fetch_all('''
+                SELECT a.*, p.full_name AS patient_name, d.full_name AS doctor_name
+                FROM appointments a
+                JOIN patients p ON a.patient_id = p.patient_id
+                JOIN doctors d ON a.doctor_id = d.doctor_id
+                WHERE a.doctor_id=%s
+                ORDER BY a.created_at DESC LIMIT 5
+            ''', (doctor_id,))
+    else:
+        stats = {
+            'patients': fetch_one('SELECT COUNT(*) AS total FROM patients')['total'],
+            'doctors': fetch_one('SELECT COUNT(*) AS total FROM doctors')['total'],
+            'appointments': fetch_one('SELECT COUNT(*) AS total FROM appointments')['total'],
+            'pending': fetch_one("SELECT COUNT(*) AS total FROM appointments WHERE status='Pending'")['total'],
+            'diagnoses': fetch_one('SELECT COUNT(*) AS total FROM diagnoses')['total']
+        }
+        recent_appointments = fetch_all('''
+            SELECT a.*, p.full_name AS patient_name, d.full_name AS doctor_name
+            FROM appointments a
+            JOIN patients p ON a.patient_id = p.patient_id
+            JOIN doctors d ON a.doctor_id = d.doctor_id
+            ORDER BY a.created_at DESC LIMIT 5
+        ''')
     return render_template('dashboard.html', stats=stats, recent_appointments=recent_appointments)
 
 
@@ -183,13 +254,28 @@ def delete_patient(patient_id):
 @app.route('/appointments')
 @login_required
 def appointments():
-    appointment_list = fetch_all('''
-        SELECT a.*, p.full_name AS patient_name, d.full_name AS doctor_name
-        FROM appointments a
-        JOIN patients p ON a.patient_id = p.patient_id
-        JOIN doctors d ON a.doctor_id = d.doctor_id
-        ORDER BY a.appointment_date DESC, a.appointment_time DESC
-    ''')
+    if session.get('role') == 'Doctor':
+        doctor_id = session.get('doctor_id')
+        if not doctor_id:
+            appointment_list = []
+            flash('Your doctor account is not linked to a doctor profile yet. Please contact the admin.', 'warning')
+        else:
+            appointment_list = fetch_all('''
+                SELECT a.*, p.full_name AS patient_name, d.full_name AS doctor_name
+                FROM appointments a
+                JOIN patients p ON a.patient_id = p.patient_id
+                JOIN doctors d ON a.doctor_id = d.doctor_id
+                WHERE a.doctor_id=%s
+                ORDER BY a.appointment_date DESC, a.appointment_time DESC
+            ''', (doctor_id,))
+    else:
+        appointment_list = fetch_all('''
+            SELECT a.*, p.full_name AS patient_name, d.full_name AS doctor_name
+            FROM appointments a
+            JOIN patients p ON a.patient_id = p.patient_id
+            JOIN doctors d ON a.doctor_id = d.doctor_id
+            ORDER BY a.appointment_date DESC, a.appointment_time DESC
+        ''')
     patient_list = fetch_all('SELECT patient_id, full_name FROM patients ORDER BY full_name')
     doctor_list = fetch_all('SELECT doctor_id, full_name FROM doctors ORDER BY full_name')
     return render_template('appointments.html', appointments=appointment_list, patients=patient_list, doctors=doctor_list)
@@ -212,8 +298,17 @@ def add_appointment():
 
 @app.route('/appointments/status/<int:appointment_id>', methods=['POST'])
 @login_required
-@roles_required('Admin', 'Staff', 'Doctor')
+@roles_required('Admin', 'Doctor')
 def update_appointment_status(appointment_id):
+    appointment = fetch_one('SELECT doctor_id FROM appointments WHERE appointment_id=%s', (appointment_id,))
+    if not appointment:
+        flash('Appointment not found.', 'danger')
+        return redirect(url_for('appointments'))
+
+    if session.get('role') == 'Doctor' and appointment['doctor_id'] != session.get('doctor_id'):
+        flash('You can only update appointments assigned to your own doctor account.', 'danger')
+        return redirect(url_for('appointments'))
+
     execute_query('UPDATE appointments SET status=%s WHERE appointment_id=%s', (request.form['status'], appointment_id))
     flash('Appointment status updated.', 'success')
     return redirect(url_for('appointments'))
@@ -252,33 +347,79 @@ def delete_doctor(doctor_id):
 @login_required
 @roles_required('Admin', 'Doctor')
 def diagnoses():
-    diagnosis_list = fetch_all('''
-        SELECT dg.*, p.full_name AS patient_name, d.full_name AS doctor_name
-        FROM diagnoses dg
-        JOIN patients p ON dg.patient_id = p.patient_id
-        JOIN doctors d ON dg.doctor_id = d.doctor_id
-        ORDER BY dg.diagnosis_date DESC
-    ''')
-    patient_list = fetch_all('SELECT patient_id, full_name FROM patients ORDER BY full_name')
-    doctor_list = fetch_all('SELECT doctor_id, full_name FROM doctors ORDER BY full_name')
-    appointment_list = fetch_all('''
-        SELECT a.appointment_id, p.full_name AS patient_name, a.appointment_date, a.appointment_time
-        FROM appointments a JOIN patients p ON a.patient_id = p.patient_id
-        ORDER BY a.appointment_date DESC
-    ''')
+    if session.get('role') == 'Doctor':
+        doctor_id = session.get('doctor_id')
+        if not doctor_id:
+            diagnosis_list = []
+            patient_list = []
+            doctor_list = []
+            appointment_list = []
+            flash('Your doctor account is not linked to a doctor profile yet. Please contact the admin.', 'warning')
+        else:
+            diagnosis_list = fetch_all('''
+                SELECT dg.*, p.full_name AS patient_name, d.full_name AS doctor_name
+                FROM diagnoses dg
+                JOIN patients p ON dg.patient_id = p.patient_id
+                JOIN doctors d ON dg.doctor_id = d.doctor_id
+                WHERE dg.doctor_id=%s
+                ORDER BY dg.diagnosis_date DESC
+            ''', (doctor_id,))
+            patient_list = fetch_all('''
+                SELECT DISTINCT p.patient_id, p.full_name
+                FROM patients p
+                JOIN appointments a ON p.patient_id = a.patient_id
+                WHERE a.doctor_id=%s
+                ORDER BY p.full_name
+            ''', (doctor_id,))
+            doctor_list = fetch_all('SELECT doctor_id, full_name FROM doctors WHERE doctor_id=%s', (doctor_id,))
+            appointment_list = fetch_all('''
+                SELECT a.appointment_id, p.full_name AS patient_name, a.appointment_date, a.appointment_time
+                FROM appointments a JOIN patients p ON a.patient_id = p.patient_id
+                WHERE a.doctor_id=%s
+                ORDER BY a.appointment_date DESC
+            ''', (doctor_id,))
+    else:
+        diagnosis_list = fetch_all('''
+            SELECT dg.*, p.full_name AS patient_name, d.full_name AS doctor_name
+            FROM diagnoses dg
+            JOIN patients p ON dg.patient_id = p.patient_id
+            JOIN doctors d ON dg.doctor_id = d.doctor_id
+            ORDER BY dg.diagnosis_date DESC
+        ''')
+        patient_list = fetch_all('SELECT patient_id, full_name FROM patients ORDER BY full_name')
+        doctor_list = fetch_all('SELECT doctor_id, full_name FROM doctors ORDER BY full_name')
+        appointment_list = fetch_all('''
+            SELECT a.appointment_id, p.full_name AS patient_name, a.appointment_date, a.appointment_time
+            FROM appointments a JOIN patients p ON a.patient_id = p.patient_id
+            ORDER BY a.appointment_date DESC
+        ''')
     return render_template('diagnoses.html', diagnoses=diagnosis_list, patients=patient_list, doctors=doctor_list, appointments=appointment_list)
 
 
 @app.route('/diagnoses/add', methods=['POST'])
 @login_required
-@roles_required('Admin', 'Doctor')
+@roles_required('Doctor')
 def add_diagnosis():
     appointment_id = request.form.get('appointment_id') or None
+    patient_id = request.form['patient_id']
+
+    doctor_id = session.get('doctor_id')
+    if not doctor_id:
+        flash('Your doctor account is not linked to a doctor profile yet.', 'danger')
+        return redirect(url_for('diagnoses'))
+
+    if appointment_id:
+        appointment = fetch_one('SELECT patient_id, doctor_id FROM appointments WHERE appointment_id=%s', (appointment_id,))
+        if not appointment or appointment['doctor_id'] != doctor_id:
+            flash('You can only add diagnosis for appointments assigned to you.', 'danger')
+            return redirect(url_for('diagnoses'))
+        patient_id = appointment['patient_id']
+
     execute_query('''
         INSERT INTO diagnoses (patient_id, doctor_id, appointment_id, diagnosis, prescription, treatment_notes)
         VALUES (%s, %s, %s, %s, %s, %s)
     ''', (
-        request.form['patient_id'], request.form['doctor_id'], appointment_id,
+        patient_id, doctor_id, appointment_id,
         request.form['diagnosis'], request.form['prescription'], request.form['treatment_notes']
     ))
     if appointment_id:
@@ -307,7 +448,16 @@ def reports():
 @login_required
 @roles_required('Admin')
 def users():
-    user_list = fetch_all('SELECT user_id, full_name, email, role, created_at FROM users ORDER BY created_at DESC')
+    repaired = repair_unlinked_doctor_accounts()
+    if repaired:
+        flash(f'{repaired} old doctor account(s) were automatically connected to their own doctor profile.', 'info')
+
+    user_list = fetch_all('''
+        SELECT u.user_id, u.full_name, u.email, u.role, u.doctor_id, u.created_at, d.full_name AS doctor_name
+        FROM users u
+        LEFT JOIN doctors d ON u.doctor_id = d.doctor_id
+        ORDER BY u.created_at DESC
+    ''')
     return render_template('users.html', users=user_list)
 
 
@@ -315,15 +465,50 @@ def users():
 @login_required
 @roles_required('Admin')
 def add_user():
+    full_name = request.form['full_name'].strip()
+    email = request.form['email'].strip()
     hashed_password = generate_password_hash(request.form['password'])
+    role = request.form['role']
+    doctor_id = None
+
     try:
+        if role == 'Doctor':
+            # A Doctor user account must have its own doctor profile.
+            # If a matching doctor profile already exists by email, reuse it.
+            # Otherwise, automatically create a new doctor profile for this account.
+            existing_doctor = fetch_one('SELECT doctor_id FROM doctors WHERE email=%s', (email,))
+            if existing_doctor:
+                doctor_id = existing_doctor['doctor_id']
+            else:
+                doctor_id = execute_insert('''
+                    INSERT INTO doctors (full_name, specialization, contact_number, email)
+                    VALUES (%s, %s, %s, %s)
+                ''', (
+                    full_name,
+                    request.form.get('specialization', '').strip(),
+                    request.form.get('contact_number', '').strip(),
+                    email
+                ))
+
         execute_query('''
-            INSERT INTO users (full_name, email, password, role)
-            VALUES (%s, %s, %s, %s)
-        ''', (request.form['full_name'], request.form['email'], hashed_password, request.form['role']))
-        flash('User account created successfully.', 'success')
-    except Error:
-        flash('Email already exists or invalid input.', 'danger')
+            INSERT INTO users (full_name, email, password, role, doctor_id)
+            VALUES (%s, %s, %s, %s, %s)
+        ''', (full_name, email, hashed_password, role, doctor_id))
+
+        if role == 'Doctor':
+            flash('Doctor account created and automatically connected to its own doctor profile.', 'success')
+        else:
+            flash('User account created successfully.', 'success')
+    except Error as e:
+        flash(f'Email already exists or invalid input. Details: {e}', 'danger')
+    return redirect(url_for('users'))
+
+
+@app.route('/users/link-doctor/<int:user_id>', methods=['POST'])
+@login_required
+@roles_required('Admin')
+def link_doctor_account(user_id):
+    flash('Manual doctor linking was removed. Doctor accounts are now connected automatically.', 'info')
     return redirect(url_for('users'))
 
 

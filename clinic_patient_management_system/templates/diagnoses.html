@@ -1,20 +1,29 @@
 {% extends 'base.html' %}
-{% set page_title = 'Doctor / Diagnosis Module' %}
+{% set page_title = 'Diagnosis Records' if session.role == 'Admin' else 'Doctor / Diagnosis Module' %}
 {% block content %}
+{% if session.role == 'Doctor' %}
 <section class="panel">
-    <div class="panel-header"><h2>Add Diagnosis</h2><p>Record patient findings, prescription, and treatment notes.</p></div>
+    <div class="panel-header"><h2>Add Diagnosis</h2><p>Only assigned doctors can record consultation findings, prescriptions, and treatment notes.</p></div>
     <form method="POST" action="{{ url_for('add_diagnosis') }}" class="form-grid">
-        <select name="patient_id" required><option value="">Select Patient</option>{% for p in patients %}<option value="{{ p.patient_id }}">{{ p.full_name }}</option>{% endfor %}</select>
-        <select name="doctor_id" required><option value="">Select Doctor</option>{% for d in doctors %}<option value="{{ d.doctor_id }}">{{ d.full_name }}</option>{% endfor %}</select>
-        <select name="appointment_id"><option value="">Link Appointment Optional</option>{% for a in appointments %}<option value="{{ a.appointment_id }}">{{ a.patient_name }} - {{ a.appointment_date }} {{ a.appointment_time }}</option>{% endfor %}</select>
+        <select name="appointment_id">
+            <option value="">Link Appointment Optional</option>
+            {% for a in appointments %}<option value="{{ a.appointment_id }}">{{ a.patient_name }} - {{ a.appointment_date }} {{ a.appointment_time }}</option>{% endfor %}
+        </select>
+        <select name="patient_id" required>
+            <option value="">Select Patient</option>
+            {% for p in patients %}<option value="{{ p.patient_id }}">{{ p.full_name }}</option>{% endfor %}
+        </select>
+        <input value="Doctor: {{ doctors[0].full_name if doctors else 'Not linked' }}" disabled>
         <textarea name="diagnosis" placeholder="Diagnosis" required></textarea>
         <textarea name="prescription" placeholder="Prescription"></textarea>
         <textarea name="treatment_notes" placeholder="Treatment Notes"></textarea>
         <button class="btn primary">Save Diagnosis</button>
     </form>
 </section>
+{% endif %}
+
 <section class="panel">
-    <div class="panel-header"><h2>Diagnosis History</h2><p>Saved consultation records.</p></div>
+    <div class="panel-header"><h2>{% if session.role == 'Admin' %}Diagnosis Records{% else %}Diagnosis History{% endif %}</h2><p>{% if session.role == 'Admin' %}View-only list of saved diagnosis records. Only doctors can create diagnosis entries.{% else %}Saved consultation records for your assigned patients.{% endif %}</p></div>
     <table>
         <thead><tr><th>Patient</th><th>Doctor</th><th>Diagnosis</th><th>Prescription</th><th>Notes</th><th>Date</th></tr></thead>
         <tbody>
