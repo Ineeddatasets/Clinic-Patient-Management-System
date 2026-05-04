@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% set page_title = 'Dashboard' %}
+{% block content %}
+<section class="cards">
+    <div class="card"><p>Total Patients</p><h2>{{ stats.patients }}</h2></div>
+    <div class="card"><p>Total Doctors</p><h2>{{ stats.doctors }}</h2></div>
+    <div class="card"><p>Appointments</p><h2>{{ stats.appointments }}</h2></div>
+    <div class="card"><p>Pending</p><h2>{{ stats.pending }}</h2></div>
+    <div class="card"><p>Diagnosis Records</p><h2>{{ stats.diagnoses }}</h2></div>
+</section>
+
+<section class="panel">
+    <div class="panel-header">
+        <h2>Recent Appointments</h2>
+        <p>Latest appointment records from the MySQL database.</p>
+    </div>
+    <table>
+        <thead><tr><th>Patient</th><th>Doctor</th><th>Date</th><th>Time</th><th>Status</th></tr></thead>
+        <tbody>
+            {% for a in recent_appointments %}
+            <tr>
+                <td>{{ a.patient_name }}</td>
+                <td>{{ a.doctor_name }}</td>
+                <td>{{ a.appointment_date }}</td>
+                <td>{{ a.appointment_time }}</td>
+                <td><span class="badge {{ a.status|lower }}">{{ a.status }}</span></td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5">No appointments yet.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endblock %}

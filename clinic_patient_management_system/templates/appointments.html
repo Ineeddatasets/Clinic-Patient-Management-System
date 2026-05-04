@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% set page_title = 'Appointment Scheduling Module' %}
+{% block content %}
+{% if session.role in ['Admin', 'Staff'] %}
+<section class="panel">
+    <div class="panel-header"><h2>Create Appointment</h2><p>Schedule patient consultation with a doctor.</p></div>
+    <form method="POST" action="{{ url_for('add_appointment') }}" class="form-grid four">
+        <select name="patient_id" required>
+            <option value="">Select Patient</option>
+            {% for p in patients %}<option value="{{ p.patient_id }}">{{ p.full_name }}</option>{% endfor %}
+        </select>
+        <select name="doctor_id" required>
+            <option value="">Select Doctor</option>
+            {% for d in doctors %}<option value="{{ d.doctor_id }}">{{ d.full_name }}</option>{% endfor %}
+        </select>
+        <input type="date" name="appointment_date" required>
+        <input type="time" name="appointment_time" required>
+        <textarea name="reason" placeholder="Reason for appointment"></textarea>
+        <button class="btn primary">Create Appointment</button>
+    </form>
+</section>
+{% endif %}
+
+<section class="panel">
+    <div class="panel-header"><h2>Appointment Records</h2><p>View and update appointment status.</p></div>
+    <table>
+        <thead><tr><th>Patient</th><th>Doctor</th><th>Date</th><th>Time</th><th>Reason</th><th>Status</th><th>Update</th></tr></thead>
+        <tbody>
+            {% for a in appointments %}
+            <tr>
+                <td>{{ a.patient_name }}</td><td>{{ a.doctor_name }}</td><td>{{ a.appointment_date }}</td><td>{{ a.appointment_time }}</td><td>{{ a.reason }}</td>
+                <td><span class="badge {{ a.status|lower }}">{{ a.status }}</span></td>
+                <td>
+                    <form method="POST" action="{{ url_for('update_appointment_status', appointment_id=a.appointment_id) }}" class="inline-form">
+                        <select name="status"><option {% if a.status=='Pending' %}selected{% endif %}>Pending</option><option {% if a.status=='Approved' %}selected{% endif %}>Approved</option><option {% if a.status=='Completed' %}selected{% endif %}>Completed</option><option {% if a.status=='Cancelled' %}selected{% endif %}>Cancelled</option></select>
+                        <button class="btn mini">Save</button>
+                    </form>
+                </td>
+            </tr>
+            {% else %}<tr><td colspan="7">No appointments found.</td></tr>{% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endblock %}

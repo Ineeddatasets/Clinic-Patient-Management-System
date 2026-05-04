@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% set page_title = 'Doctor / Diagnosis Module' %}
+{% block content %}
+<section class="panel">
+    <div class="panel-header"><h2>Add Diagnosis</h2><p>Record patient findings, prescription, and treatment notes.</p></div>
+    <form method="POST" action="{{ url_for('add_diagnosis') }}" class="form-grid">
+        <select name="patient_id" required><option value="">Select Patient</option>{% for p in patients %}<option value="{{ p.patient_id }}">{{ p.full_name }}</option>{% endfor %}</select>
+        <select name="doctor_id" required><option value="">Select Doctor</option>{% for d in doctors %}<option value="{{ d.doctor_id }}">{{ d.full_name }}</option>{% endfor %}</select>
+        <select name="appointment_id"><option value="">Link Appointment Optional</option>{% for a in appointments %}<option value="{{ a.appointment_id }}">{{ a.patient_name }} - {{ a.appointment_date }} {{ a.appointment_time }}</option>{% endfor %}</select>
+        <textarea name="diagnosis" placeholder="Diagnosis" required></textarea>
+        <textarea name="prescription" placeholder="Prescription"></textarea>
+        <textarea name="treatment_notes" placeholder="Treatment Notes"></textarea>
+        <button class="btn primary">Save Diagnosis</button>
+    </form>
+</section>
+<section class="panel">
+    <div class="panel-header"><h2>Diagnosis History</h2><p>Saved consultation records.</p></div>
+    <table>
+        <thead><tr><th>Patient</th><th>Doctor</th><th>Diagnosis</th><th>Prescription</th><th>Notes</th><th>Date</th></tr></thead>
+        <tbody>
+            {% for dg in diagnoses %}
+            <tr><td>{{ dg.patient_name }}</td><td>{{ dg.doctor_name }}</td><td>{{ dg.diagnosis }}</td><td>{{ dg.prescription }}</td><td>{{ dg.treatment_notes }}</td><td>{{ dg.diagnosis_date }}</td></tr>
+            {% else %}<tr><td colspan="6">No diagnosis records found.</td></tr>{% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endblock %}

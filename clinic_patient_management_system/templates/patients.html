@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+{% set page_title = 'Patient Registration Module' %}
+{% block content %}
+<section class="grid two">
+    <div class="panel">
+        <div class="panel-header"><h2>Add Patient</h2><p>Register new patient information.</p></div>
+        <form method="POST" action="{{ url_for('add_patient') }}" class="form-grid">
+            <input name="full_name" placeholder="Full Name" required>
+            <input name="age" type="number" placeholder="Age" required>
+            <select name="gender"><option>Male</option><option>Female</option><option>Other</option></select>
+            <input name="contact_number" placeholder="Contact Number">
+            <textarea name="address" placeholder="Address"></textarea>
+            <textarea name="medical_history" placeholder="Medical History"></textarea>
+            <button class="btn primary">Save Patient</button>
+        </form>
+    </div>
+
+    <div class="panel">
+        <div class="panel-header"><h2>Search Patient</h2><p>Find patient by name, contact, or address.</p></div>
+        <form method="GET" class="search-row">
+            <input name="search" value="{{ search }}" placeholder="Search patient...">
+            <button class="btn secondary">Search</button>
+            <a href="{{ url_for('patients') }}" class="btn ghost">Clear</a>
+        </form>
+    </div>
+</section>
+
+<section class="panel">
+    <div class="panel-header"><h2>Patient Records</h2><p>Manage registered patients.</p></div>
+    <table>
+        <thead><tr><th>Name</th><th>Age</th><th>Gender</th><th>Contact</th><th>Address</th><th>Medical History</th><th>Action</th></tr></thead>
+        <tbody>
+            {% for p in patients %}
+            <tr>
+                <form method="POST" action="{{ url_for('edit_patient', patient_id=p.patient_id) }}">
+                <td><input name="full_name" value="{{ p.full_name }}" required></td>
+                <td><input name="age" type="number" value="{{ p.age }}" required></td>
+                <td><input name="gender" value="{{ p.gender }}"></td>
+                <td><input name="contact_number" value="{{ p.contact_number }}"></td>
+                <td><input name="address" value="{{ p.address }}"></td>
+                <td><input name="medical_history" value="{{ p.medical_history }}"></td>
+                <td class="actions"><button class="btn mini">Update</button><a class="btn mini danger" onclick="return confirm('Delete this patient?')" href="{{ url_for('delete_patient', patient_id=p.patient_id) }}">Delete</a></td>
+                </form>
+            </tr>
+            {% else %}
+            <tr><td colspan="7">No patient records found.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endblock %}

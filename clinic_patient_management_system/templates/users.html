@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% set page_title = 'User Account Management' %}
+{% block content %}
+<section class="panel">
+    <div class="panel-header"><h2>Create User</h2><p>Add Admin, Staff, or Doctor login account.</p></div>
+    <form method="POST" action="{{ url_for('add_user') }}" class="form-grid four">
+        <input name="full_name" placeholder="Full Name" required>
+        <input type="email" name="email" placeholder="Email" required>
+        <input type="password" name="password" placeholder="Password" required>
+        <select name="role"><option>Admin</option><option>Staff</option><option>Doctor</option></select>
+        <button class="btn primary">Create Account</button>
+    </form>
+</section>
+<section class="panel">
+    <div class="panel-header"><h2>System Users</h2></div>
+    <table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Date Created</th></tr></thead><tbody>{% for u in users %}<tr><td>{{ u.full_name }}</td><td>{{ u.email }}</td><td>{{ u.role }}</td><td>{{ u.created_at }}</td></tr>{% else %}<tr><td colspan="4">No users found.</td></tr>{% endfor %}</tbody></table>
+</section>
+{% endblock %}

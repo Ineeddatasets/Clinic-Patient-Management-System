@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | ClinicCare</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="login-body">
+    <section class="login-card">
+        <div class="login-brand">
+            <div class="brand-icon large">+</div>
+            <h1>ClinicCare</h1>
+            <p>Clinic Patient Management System</p>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert {{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST">
+            <label>Email</label>
+            <input type="email" name="email" placeholder="Enter email" required>
+
+            <label>Password</label>
+            <input type="password" name="password" placeholder="Enter password" required>
+
+            <button type="submit" class="btn primary full">Login</button>
+        </form>
+
+        <div class="demo-box">
+            <strong>Default Accounts</strong>
+            <p>Admin: admin@clinic.com / admin123</p>
+            <p>Staff: staff@clinic.com / staff123</p>
+            <p>Doctor: doctor@clinic.com / doctor123</p>
+        </div>
+    </section>
+</body>
+</html>

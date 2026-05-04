@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+{% set page_title = 'Admin and Reports Module' %}
+{% block content %}
+<section class="grid three">
+    <div class="panel"><div class="panel-header"><h2>Appointment Status</h2></div><table><thead><tr><th>Status</th><th>Total</th></tr></thead><tbody>{% for r in status_report %}<tr><td>{{ r.status }}</td><td>{{ r.total }}</td></tr>{% else %}<tr><td colspan="2">No data.</td></tr>{% endfor %}</tbody></table></div>
+    <div class="panel"><div class="panel-header"><h2>Monthly Appointments</h2></div><table><thead><tr><th>Month</th><th>Total</th></tr></thead><tbody>{% for r in monthly_report %}<tr><td>{{ r.month }}</td><td>{{ r.total }}</td></tr>{% else %}<tr><td colspan="2">No data.</td></tr>{% endfor %}</tbody></table></div>
+    <div class="panel"><div class="panel-header"><h2>Diagnosis Records</h2></div><table><thead><tr><th>Date</th><th>Total</th></tr></thead><tbody>{% for r in diagnosis_report %}<tr><td>{{ r.date }}</td><td>{{ r.total }}</td></tr>{% else %}<tr><td colspan="2">No data.</td></tr>{% endfor %}</tbody></table></div>
+</section>
+<button onclick="window.print()" class="btn primary">Print Reports</button>
+{% endblock %}
