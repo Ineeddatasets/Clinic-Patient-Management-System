@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% set page_title = 'Doctor Management' %}
+{% block content %}
+<section class="panel">
+    <div class="panel-header"><h2>Add Doctor</h2><p>Manage doctors assigned in the clinic.</p></div>
+    <form method="POST" action="{{ url_for('add_doctor') }}" class="form-grid four">
+    <input name="full_name" placeholder="Doctor Name" required>
+    <input name="specialization" placeholder="Specialization">
+    <input name="contact_number" placeholder="Contact Number">
+    <input type="email" name="email" placeholder="Email" required>
+    <input type="password" name="password" placeholder="Password" required>
+    <button class="btn primary">Add Doctor</button>
+</form>
+</section>
+<section class="panel">
+    <div class="panel-header"><h2>Doctor Records</h2></div>
+    <table>
+        <thead><tr><th>Name</th><th>Specialization</th><th>Contact</th><th>Email</th><th>Action</th></tr></thead>
+        <tbody>
+            {% for d in doctors %}
+            <tr><td>{{ d.full_name }}</td><td>{{ d.specialization }}</td><td>{{ d.contact_number }}</td><td>{{ d.email }}</td><td><a class="btn mini danger" onclick="return confirm('Delete this doctor?')" href="{{ url_for('delete_doctor', doctor_id=d.doctor_id) }}">Delete</a></td></tr>
+            {% else %}<tr><td colspan="5">No doctors found.</td></tr>{% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endblock %}

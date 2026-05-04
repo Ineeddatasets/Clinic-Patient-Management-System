@@ -326,11 +326,35 @@ def doctors():
 @login_required
 @roles_required('Admin')
 def add_doctor():
-    execute_query('''
+    full_name = request.form['full_name'].strip()
+    specialization = request.form.get('specialization', '').strip()
+    contact_number = request.form.get('contact_number', '').strip()
+    email = request.form['email'].strip()
+    password = request.form['password']
+
+    existing_user = fetch_one('SELECT user_id FROM users WHERE email=%s', (email,))
+    if existing_user:
+        flash('This email is already used by another user account.', 'danger')
+        return redirect(url_for('doctors'))
+
+    existing_doctor = fetch_one('SELECT doctor_id FROM doctors WHERE email=%s', (email,))
+    if existing_doctor:
+        flash('This email is already used by another doctor profile.', 'danger')
+        return redirect(url_for('doctors'))
+
+    doctor_id = execute_insert('''
         INSERT INTO doctors (full_name, specialization, contact_number, email)
         VALUES (%s, %s, %s, %s)
-    ''', (request.form['full_name'], request.form['specialization'], request.form['contact_number'], request.form['email']))
-    flash('Doctor added successfully.', 'success')
+    ''', (full_name, specialization, contact_number, email))
+
+    hashed_password = generate_password_hash(password)
+
+    execute_query('''
+        INSERT INTO users (full_name, email, password, role, doctor_id)
+        VALUES (%s, %s, %s, %s, %s)
+    ''', (full_name, email, hashed_password, 'Doctor', doctor_id))
+
+    flash('Doctor profile and login account created successfully.', 'success')
     return redirect(url_for('doctors'))
 
 
